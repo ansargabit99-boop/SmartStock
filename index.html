@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SmartStock — автоматическая закупка</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f7f9;--card:#fff;--text:#1b1f27;--muted:#667085;--line:#e4e7ec;--accent:#2563eb;--ok:#16a34a;--warn:#d97706;--bad:#dc2626;--okbg:#dcfce7;--warnbg:#fef3c7;--badbg:#fee2e2}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1218;--card:#181c25;--text:#e8eaef;--muted:#98a2b3;--line:#2a303c;--accent:#6b9bff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--okbg:#12351f;--warnbg:#3b2f0e;--badbg:#401818}}
+:root[data-theme="dark"]{--bg:#0f1218;--card:#181c25;--text:#e8eaef;--muted:#98a2b3;--line:#2a303c;--accent:#6b9bff;--ok:#4ade80;--warn:#fbbf24;--bad:#f87171;--okbg:#12351f;--warnbg:#3b2f0e;--badbg:#401818}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;line-height:1.45}
+.wrap{max-width:980px;margin:0 auto;padding:20px 16px 48px}
+h1{margin:0 0 4px;font-size:26px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+button,select{font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:9px 14px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+label{color:var(--muted);font-size:14px}
+input[type=file]{display:none}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.stat{border-radius:10px;padding:14px;border:1px solid var(--line);background:var(--card)}
+.stat b{display:block;font-size:24px;margin-top:2px}
+.stat.bad{background:var(--badbg)}.stat.warn{background:var(--warnbg)}.stat.ok{background:var(--okbg)}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
+th,td{padding:9px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.03em}
+td.n,th.n{text-align:right;white-space:nowrap}
+.tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+.tag.order{background:var(--badbg);color:var(--bad)}.tag.enough{background:var(--okbg);color:var(--ok)}.tag.over{background:var(--warnbg);color:var(--warn)}
+.why{color:var(--muted);font-size:13px}
+.hint{color:var(--muted);font-size:13px}
+.err{color:var(--bad);margin-top:8px}
+#out{display:none}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px;padding:0;list-style:none}
+.steps li{background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted)}
+.todo ol{margin:8px 0 0;padding-left:20px}.todo li{margin-bottom:4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.chips button{font-size:13px;padding:6px 12px;border-radius:999px}
+.ask{display:flex;gap:8px}.ask input{flex:1;font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);padding:9px 12px;min-width:0}
+#aiAns{display:none;margin-top:12px;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);white-space:pre-wrap}
+body{background:radial-gradient(1200px 400px at 50% -100px,color-mix(in srgb,var(--accent) 18%,transparent),transparent),var(--bg)}
+.wrap{padding-top:28px}
+.hero{margin-bottom:6px}
+.hero h1{font-size:34px;letter-spacing:-.02em;margin:0}
+.badge{display:inline-block;margin-top:6px;padding:3px 11px;border-radius:999px;background:color-mix(in srgb,var(--accent) 14%,transparent);color:var(--accent);font-size:13px;font-weight:600}
+.sub{font-size:16px;max-width:640px}
+.card{border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 8px 24px rgba(16,24,40,.05);padding:20px}
+button{transition:transform .1s,box-shadow .15s}
+button:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(16,24,40,.12)}
+button.primary{padding:11px 20px;font-weight:600;font-size:15px}
+.explain{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:0 0 16px}
+.ex{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.ex .ic{font-size:26px}.ex b{display:block;margin:6px 0 4px}.ex span{color:var(--muted);font-size:14px}
+.example{grid-column:1/-1;background:color-mix(in srgb,var(--accent) 8%,var(--card));border-color:color-mix(in srgb,var(--accent) 30%,var(--line))}
+.stat{border-radius:16px;padding:18px;font-weight:600}
+.stat b{font-size:30px;margin:4px 0}.stat .hint{font-weight:400}
+th{position:sticky;top:0;background:var(--card)}
+tbody tr:hover{background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.tag{padding:3px 11px}
+.todo{border-left:5px solid var(--ok)}
+.todo li{font-size:15px}
+.trgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin:12px 0}
+.trh{font-weight:600;font-size:14px;margin-bottom:6px}
+.tr{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:8px 0;border-bottom:1px solid var(--line)}
+.tr .hint{grid-column:1/-1}
+.g{font-weight:700}.g.up{color:var(--ok)}.g.dn{color:var(--bad)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hero"><h1>📦 SmartStock</h1><span class="badge">Умная закупка для магазина</span></div>
+  <p class="sub">ИИ анализирует продажи, остатки, сезонность и тренды и подсказывает, что и сколько закупить на неделю, чего не брать повторно и какие новые товары могут зайти покупателям.</p>
+  <div class="explain"><div class="ex"><div class="ic">😟</div><b>Проблема</b><span>Магазин закупает «на глаз»: сахар лежит месяцами, а кофе закончился — деньги и покупатели уходят.</span></div><div class="ex"><div class="ic">🧮</div><b>Что делает SmartStock</b><span>Смотрит продажи, остатки, сезон и тренды, считает, сколько заказать, и подсказывает новые товары.</span></div><div class="ex"><div class="ic">💰</div><b>Результат</b><span>Меньше денег замороженно в товаре и меньше потерянных продаж.</span></div><div class="ex example"><b>Пример</b><span>Кофе продаётся по 10 шт. в неделю, на складе 2 → «Закажите 9». Сахар продаётся по 50 в неделю, на складе 175 → «Не закупайте, хватит на 3,5 недели».</span></div></div>
+
+  <div class="card">
+    <div class="row">
+      <button class="primary" id="demoBtn">1. Попробовать на демо-данных</button>
+      <button id="fileBtn">или загрузить файл (Excel, PDF, Word, CSV, фото)</button>
+      <input type="file" id="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls,.xlsm,.ods,.pdf,.docx,.png,.jpg,.jpeg,.webp,image/*">
+      <button id="dlBtn">Скачать пример CSV</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label for="season">2. Какая будет следующая неделя?</label>
+      <select id="season">
+        <option value="1">Обычная неделя (×1.0)</option>
+        <option value="1.3">Наурыз (×1.3)</option>
+        <option value="1.25">Рамадан / Ораза айт (×1.25)</option>
+        <option value="1.5">Новый год (×1.5)</option>
+        <option value="0.85">Низкий сезон (×0.85)</option>
+      </select>
+    </div>
+    <p class="hint" style="margin-bottom:0">Подойдёт любой файл: Excel, CSV, PDF, Word, фото или текст — можно перетащить прямо на страницу. Колонки находятся автоматически, а если не получится — вы укажете их сами. Идеальный вид: <b>date, product, sold, stock, price</b> (дата, товар, продано за день, остаток, цена закупки ₸). Цена необязательна. Разделитель «,» или «;».</p>
+    <div class="err" id="err"></div>
+    <div id="mapBox"></div>
+  </div>
+
+  <div class="card" id="aiin"><b>📷 Фото тетради или «грязный» текст</b><p class="hint" style="margin:4px 0 8px">Сфотографируйте тетрадь, накладную или чек — или вставьте строки как есть. ИИ сам разберёт их в таблицу, вы проверите и добавите в данные.</p><div class="row"><label for="inMode">Что это?</label><select id="inMode"><option value="sales">Продажи</option><option value="stock">Остатки на складе</option></select><label for="inWeeks">Период продаж:</label><select id="inWeeks"><option value="1">1 неделя</option><option value="2">2 недели</option><option value="4">4 недели</option></select></div><textarea id="inText" rows="4" placeholder="Например:&#10;молоко 5 шт&#10;сахар - 12&#10;хлеб белый 20 по 180" style="width:100%;margin-top:10px;font:inherit;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--text);padding:10px"></textarea><div class="row" style="margin-top:10px"><button id="photoBtn">📷 Выбрать фото</button><input type="file" id="photoFile" accept="image/*" multiple><span class="hint" id="photoName"></span><button class="primary" id="parseBtn">Распознать</button></div><div id="inOut"></div></div>
+  <div id="out">
+    <div class="card todo" id="todo"></div>
+    <div class="stats" id="stats"></div>
+    <div class="card" id="trend" style="margin-top:16px"></div>
+    <div class="card" style="margin-top:16px"><b>🆕 Новые товары в тренде</b><p class="hint" style="margin:4px 0 0">Что сейчас популярно среди молодёжи и детей — как «Латяо» этим летом. ИИ подбирает идеи под ваш ассортимент.</p><div style="margin:12px 0"><button class="primary" onclick="askAI('Какие новые товары сейчас популярны среди молодёжи и детей (вирусные снеки, сладости, напитки из соцсетей)? Предложи 4-5 идей, подходящих к моему ассортименту. Для каждой: что это, почему может зайти и с какой небольшой пробной партии начать. Честно скажи, что это идеи по твоим знаниям, а не живые данные из соцсетей, и учти просьбы покупателей, если они есть.','newAns')">🤖 Подобрать новые товары</button></div><div id="newAns" style="display:none;padding:12px;border-radius:10px;background:var(--bg);border:1px solid var(--line);white-space:pre-wrap"></div></div>
+    <div class="card" style="margin-top:16px"><b>🗣 Просьбы покупателей</b><p class="hint" style="margin:4px 0 0">Покупатели просят товар, которого нет? Записывайте: чем чаще просят, тем выше шанс, что он пойдёт.</p><div class="ask" style="margin:10px 0"><input id="reqIn" placeholder="Например: хлеб с отрубями"><button class="primary" onclick="addReq()">Добавить</button></div><div id="reqList"></div></div>
+    <div class="card" style="margin-top:16px"><b>🏷 Проверка акции поставщика</b><p class="hint" style="margin:4px 0 0">Предлагают скидку за большую партию? Проверьте, не залежится ли товар (как маленькие шоколадки Bruni).</p><div class="ask" style="margin:10px 0;flex-wrap:wrap"><select id="promoSel" style="flex:1;min-width:160px"></select><input id="promoQty" type="number" min="1" placeholder="Сколько предлагают, шт." style="max-width:210px"><button class="primary" onclick="checkPromo()">Проверить</button></div><div id="promoOut"></div></div>
+    <div class="card" style="margin-top:16px">
+      <b>🤖 Спросите ИИ-помощника</b>
+      <p class="hint" style="margin:4px 0 0">Claude видит ваши цифры и отвечает простым языком.</p>
+      <div class="chips"><button onclick="askAI('Объясни простыми словами, что мне заказать в первую очередь и почему.')">Что заказать в первую очередь?</button><button onclick="askAI('Почему не нужно закупать товары со статусом Избыток? Назови самые дорогие.')">Почему не покупать лишнее?</button><button onclick="askAI('Как мне сэкономить деньги на закупке на этой неделе? Дай 3 конкретных совета по моим данным.')">Как сэкономить?</button></div>
+      <div class="ask"><input id="aiQ" placeholder="Например: почему так много сахара?"><button class="primary" onclick="askAI($('aiQ').value||'Дай краткий вывод по моему плану закупки.')">Спросить</button></div>
+      <div id="aiAns"></div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px">
+        <b>План закупки на следующую неделю</b>
+        <button id="copyBtn">Скопировать заказ</button>
+      </div>
+      <div class="scroll"><table id="tbl"></table></div>
+      <p class="hint" style="margin-bottom:0" id="method"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.round(n).toLocaleString('ru-RU');
+let rows=[],plan=[];
+
+// ---------- sample data ----------
+const PRODUCTS=[
+ ["Молоко 1л",1,520,420,1.0],["Хлеб белый",1,0,0,0],["Сахар 1кг",1,480,600,.9],["Мука 2кг",1,0,0,0],
+ ["Рис 1кг",1,0,0,0],["Масло подсолнечное 1л",1,0,0,0],["Яйца 10шт",1,0,0,0],["Чай чёрный 100г",1,0,0,0],
+ ["Кофе растворимый",1,0,0,0],["Макароны 400г",1,0,0,0],["Сок яблочный 1л",1,0,0,0],["Вода 1.5л",1,0,0,0],
+ ["Печенье",1,0,0,0],["Шоколад плитка",1,0,0,0],["Консервы тушёнка",1,0,0,0],["Курага 500г",1,0,0,0],
+ ["Баурсаки (упаковка)",1,0,0,0],["Конфеты 1кг",1,0,0,0],["Мыло",1,0,0,0],["Стиральный порошок",1,0,0,0]
+];
+// name, price, base weekly sales, stock mode (<1 low,>1 high x weekly), trend
+const P=[
+ ["Молоко 1л",520,70,0.6,0],["Хлеб белый",180,140,0.4,0],["Сахар 1кг",480,50,3.5,0],["Мука 2кг",900,25,1.2,0],
+ ["Рис 1кг",750,30,1.0,0],["Масло подсолнечное 1л",1100,28,0.5,0],["Яйца 10шт",900,60,0.7,1],["Чай чёрный 100г",650,22,4.2,0],
+ ["Кофе растворимый",1800,10,5.0,-1],["Макароны 400г",300,35,1.4,0],["Сок яблочный 1л",750,24,2.9,0],["Вода 1.5л",280,48,1.1,0],
+ ["Печенье",420,32,1.3,0],["Шоколад плитка",600,26,0.5,1],["Консервы тушёнка",1400,9,6.0,-1],["Курага 500г",1700,8,1.2,0],
+ ["Баурсаки (упаковка)",650,18,0.6,1],["Конфеты 1кг",2200,12,3.8,0],["Мыло",250,20,1.5,0],["Стиральный порошок",2300,9,4.5,0]
+];
+function sampleCSV(){
+  let s=37;const rnd=()=>{s=(s*9301+49297)%233280;return s/233280};
+  const end=new Date();end.setHours(0,0,0,0);
+  const lines=["date,product,sold,stock,price"];
+  for(const [name,price,base,mode,trend] of P){
+    let stock=Math.round(base*mode);
+    const days=[];
+    for(let d=55;d>=0;d--){
+      const dt=new Date(end);dt.setDate(end.getDate()-d);
+      const wk=Math.floor((55-d)/7);
+      const f=1+trend*0.12*wk-(trend<0?0:0);
+      const dow=dt.getDay();const w=(dow===6||dow===0)?1.3:0.9;
+      const q=Math.max(0,Math.round(base/7*f*w*(0.75+rnd()*0.5)));
+      days.push([dt,q]);
+    }
+    // stock only matters on the last day; ramp so last-day stock = target
+    days.forEach(([dt,q],i)=>{
+      const last=i===days.length-1;
+      lines.push(`${dt.toISOString().slice(0,10)},${name},${q},${last?stock:Math.round(stock+ (days.length-1-i)*0.1)},${price}`);
+    });
+  }
+  return lines.join("\n");
+}
+
+// ---------- parsing ----------
+function parseCSVOld(text){
+  const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)throw new Error("Файл пустой или без данных.");
+  const delim=(lines[0].match(/;/g)||[]).length>(lines[0].match(/,/g)||[]).length?";":",";
+  const head=lines[0].split(delim).map(h=>h.trim().toLowerCase());
+  const find=(...k)=>head.findIndex(h=>k.some(x=>h.includes(x)));
+  const ci={d:find("date","дата"),p:find("product","товар","наимен"),s:find("sold","продано","прод","qty","колич","кол-во"),k:find("stock","остат"),c:find("price","цена")};
+  if(ci.d<0||ci.p<0||ci.s<0||ci.k<0)throw new Error("Не найдены колонки. Нужны: date, product, sold, stock (дата, товар, продано, остаток).");
+  const out=[];
+  for(let i=1;i<lines.length;i++){
+    const c=lines[i].split(delim).map(x=>x.trim());
+    const dt=new Date(c[ci.d]);
+    if(isNaN(dt)||!c[ci.p])continue;
+    out.push({date:dt,product:c[ci.p],sold:parseFloat(c[ci.s].replace(',','.'))||0,stock:parseFloat(c[ci.k].replace(',','.'))||0,price:ci.c>=0?(parseFloat(c[ci.c].replace(',','.'))||0):0});
+  }
+  if(!out.length)throw new Error("Не удалось прочитать строки. Проверьте формат даты (ГГГГ-ММ-ДД).");
+  return out;
+}
+
+// ---------- calculation ----------
+function calc(rows,season){
+  const maxT=Math.max(...rows.map(r=>r.date.getTime()));
+  const DAY=864e5;
+  const by={};
+  for(const r of rows){(by[r.product]=by[r.product]||[]).push(r)}
+  const res=[];
+  for(const [name,list] of Object.entries(by)){
+    list.sort((a,b)=>a.date-b.date);
+    const last=list[list.length-1];
+    let s28=0,s7=0,a14=0,b14=0;
+    for(const r of list){const age=(maxT-r.date.getTime())/DAY;if(age<28)s28+=r.sold;if(age<7)s7+=r.sold;if(age<14)a14+=r.sold;else if(age<28)b14+=r.sold}
+    const avg=s28/4,exp=avg*season,stock=last.stock,price=last.price||0;
+    const target=exp*1.1; // +10% safety
+    const order=Math.max(0,Math.ceil(target-stock));
+    let status="enough";
+    if(stock<exp)status="order";else if(stock>exp*2.5)status="over";
+    const excess=Math.max(0,stock-exp*2);
+    const trend=s28>0?(s7-avg)/avg:0;
+    let why;
+    const t=trend>0.15?" Продажи растут.":trend<-0.15?" Продажи падают.":"";
+    if(status==="order")why=`Продаётся ~${fmt(avg)} в нед.${season!==1?` (с учётом сезона ожидаем ~${fmt(exp)})`:''}, на складе ${fmt(stock)} — не хватит на неделю. Заказать ${fmt(order)}.${t}`;
+    else if(status==="over")why=`На складе ${fmt(stock)}, а продаётся ~${fmt(exp)} в нед. — запаса на ${(exp>0?stock/exp:99).toFixed(1)} нед. Не закупать, ${price?`заморожено ≈ ${fmt(excess*price)} ₸`:'деньги заморожены'}.${t}`;
+    else why=`Остаток ${fmt(stock)} покрывает ожидаемые ~${fmt(exp)} в нед.${order?` Можно добавить ${fmt(order)} для страховки.`:''}${t}`;
+    res.push({name,growth:b14>0?(a14-b14)/b14:0,a14,b14,s7,avg,exp,stock,price,order,status,excess,why,lostRisk:status==="order"?Math.max(0,exp-stock)*price:0});
+  }
+  const rank={order:0,over:1,enough:2};
+  res.sort((a,b)=>rank[a.status]-rank[b.status]||b.order-a.order);
+  return res;
+}
+
+// ---------- render ----------
+function render(){
+  const season=parseFloat($('season').value);
+  plan=calc(rows,season);
+  const over=plan.filter(p=>p.status==="over"),low=plan.filter(p=>p.status==="order");
+  const frozen=over.reduce((a,p)=>a+p.excess*p.price,0);
+  const cost=plan.reduce((a,p)=>a+p.order*p.price,0);
+  const risk=low.reduce((a,p)=>a+p.lostRisk,0);
+  $('stats').innerHTML=
+   `<div class="stat warn">🧊 Лишний товар (деньги заморожены)<b>${over.length}</b><span class="hint">заморожено ≈ ${fmt(frozen)} ₸</span></div>`+
+   `<div class="stat bad">⚠️ Скоро закончится<b>${low.length}</b><span class="hint">возможные потери ≈ ${fmt(risk)} ₸ за неделю</span></div>`+
+   `<div class="stat ok">🛒 Бюджет закупки<b>${fmt(cost)} ₸</b><span class="hint">${plan.filter(p=>p.order>0).length} позиций к заказу</span></div>`;
+  const lab={order:"Заказать",enough:"Достаточно",over:"Избыток"};
+  $('tbl').innerHTML=`<thead><tr><th>Товар</th><th class="n">Продано за 7 дн.</th><th class="n">В среднем / нед.</th><th class="n">Остаток</th><th class="n">Заказать</th><th>Статус</th><th>Пояснение</th></tr></thead><tbody>`+
+   plan.map(p=>`<tr><td><b>${p.name}</b></td><td class="n">${fmt(p.s7)}</td><td class="n">${fmt(p.avg)}</td><td class="n">${fmt(p.stock)}</td><td class="n"><b>${p.order||'—'}</b></td><td><span class="tag ${p.status}">${lab[p.status]}</span></td><td class="why">${p.why}</td></tr>`).join("")+`</tbody>`;
+  $('method').textContent=`Как считаем: средние продажи за последние 4 недели × сезонный коэффициент (×${season}) + 10% страховой запас − текущий остаток. «Избыток» — остаток больше 2.5 недель продаж; замороженные деньги — то, что сверх запаса на 2 недели.`;
+  const money=p=>p.order*p.price;
+  const top=[...plan].filter(p=>p.order>0).sort((a,b)=>money(b)-money(a)).slice(0,3).map(p=>esc(p.name)).join(', ');
+  const ov=[...over].sort((a,b)=>b.excess*b.price-a.excess*a.price).slice(0,3).map(p=>esc(p.name)).join(', ');
+  $('todo').innerHTML=`<b>✅ Что делать на этой неделе</b><ol><li>${plan.filter(p=>p.order>0).length?`Закажите <b>${plan.filter(p=>p.order>0).length} товаров</b>${cost?` на ≈ <b>${fmt(cost)} ₸</b>`:''}. Важнее всего: ${top}.`:'Заказывать ничего не нужно — запасов хватает.'}</li><li>${over.length?`<b>Не закупайте</b>: ${ov} — их уже слишком много на складе.`:'Лишнего товара нет.'}</li><li>Остальное в порядке — можно не трогать.</li></ol>`;
+  const up=[...plan].filter(p=>p.b14>0&&p.growth>0.15).sort((a,b)=>b.growth-a.growth).slice(0,4);
+  const dn=[...plan].filter(p=>p.b14>0&&p.growth<-0.15).sort((a,b)=>a.growth-b.growth).slice(0,3);
+  const pct=g=>(g>0?'+':'')+Math.round(g*100)+'%';
+  const trItem=p=>`<div class="tr"><b>${esc(p.name)}</b><span class="g ${p.growth>0?'up':'dn'}">${pct(p.growth)}</span><span class="hint">${p.growth>0?(p.stock<p.exp?'Остаток маленький — закажите сейчас.':'Пока хватает остатка, но следите за ним.'):'Не увеличивайте закупку.'}</span></div>`;
+  $('trend').innerHTML=`<b>🔥 Что в тренде</b><p class="hint" style="margin:4px 0 0">Сравниваем продажи за последние 2 недели с предыдущими 2 неделями.</p><div class="trgrid"><div><div class="trh">📈 Спрос растёт — докупайте</div>${up.length?up.map(trItem).join(''):'<span class="hint">Явного роста нет.</span>'}</div><div><div class="trh">📉 Спрос падает — осторожнее</div>${dn.length?dn.map(trItem).join(''):'<span class="hint">Явного падения нет.</span>'}</div></div><button class="primary" onclick="askAI('Какие товары сейчас растут в продажах и что мне докупить по тренду? Учти ближайшие праздники в Казахстане. Дай 3-5 конкретных советов по моим данным. Если предложишь новые сопутствующие товары, скажи, что это идея, а не данные.')">🤖 Что ещё купить по тренду?</button>`;
+  $('promoSel').innerHTML=plan.map(p=>`<option>${esc(p.name)}</option>`).join('');$('promoOut').innerHTML='';
+  $('aiAns').style.display='none';
+  $('out').style.display='block';
+}
+function loadOld(text){
+  $('err').textContent='';
+  try{rows=parseCSV(text);render();$('out').scrollIntoView({behavior:'smooth'})}
+  catch(e){$('err').textContent=e.message}
+}
+
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function askAI(q,bid){
+  const box=$(bid||'aiAns');box.style.display='block';box.textContent='Claude думает…';
+  try{
+    const sample=window.claude?await claude.use('sample'):null;
+    if(!sample){box.textContent='ИИ-помощник работает, когда страница открыта в Claude.';return}
+    const st={order:'нужно заказать',over:'излишек',enough:'достаточно'};
+    const data=plan.map(p=>`${p.name}: продаётся ~${fmt(p.avg)}/нед, остаток ${fmt(p.stock)}, рекомендуем заказать ${p.order}, динамика за 2 нед ${p.b14>0?Math.round(p.growth*100)+'%':'нет данных'}, статус: ${st[p.status]}${p.price?`, цена ${fmt(p.price)} ₸`:''}`).join('\n');
+    const prompt=`Ты SmartStock — помощник владельца небольшого магазина в Казахстане. Отвечай по-русски, очень просто и коротко (до 180 слов), без сложных терминов. Используй только цифры из данных ниже, ничего не выдумывай. Коэффициент сезона на следующую неделю: ×${$('season').value}.\n\nДанные магазина:\n${data}\n\nПросьбы покупателей: ${reqs.map(r=>r.n+' ×'+r.c).join(', ')||'нет'}\n\nВопрос владельца: ${q}`;
+    const r=await sample(prompt,{cache:false,onText:({text})=>{box.textContent=text}});
+    box.textContent=r.text;
+  }catch(e){
+    box.textContent=e&&e.code==='not_granted'?'Доступ к ИИ не разрешён.':'Не получилось получить ответ. Попробуйте ещё раз чуть позже.';
+  }
+}
+let reqs=[];
+function addReq(){const v=$('reqIn').value.trim();if(!v)return;const f=reqs.find(r=>r.n.toLowerCase()===v.toLowerCase());f?f.c++:reqs.push({n:v,c:1});$('reqIn').value='';drawReqs()}
+function bump(i){reqs[i].c++;drawReqs()}
+function drawReqs(){reqs.sort((a,b)=>b.c-a.c);$('reqList').innerHTML=reqs.length?reqs.map((r,i)=>`<div class="tr"><b>${esc(r.n)}</b><span class="g up">×${r.c} <button onclick="bump(${i})">+1</button></span><span class="hint">${r.c>=3?'Просят часто — закажите пробную партию.':'Пока мало запросов — следите.'}</span></div>`).join(''):'<span class="hint">Пока пусто. Запишите, что просят покупатели.</span>'}
+function checkPromo(){
+  const p=plan.find(x=>x.name===$('promoSel').value),q=parseFloat($('promoQty').value),o=$('promoOut');
+  if(!p||!q){o.innerHTML='<span class="hint">Выберите товар и введите количество.</span>';return}
+  const max=Math.max(0,Math.ceil(p.exp*2-p.stock));
+  const weeks=p.exp>0?(p.stock+q)/p.exp:99;
+  const money=p.price?` Это ≈ ${fmt(q*p.price)} ₸ вашего оборота в товаре.`:'';
+  let cls,msg;
+  if(p.exp<=0){cls='over';msg='Товар почти не продаётся — акция не нужна. Не берите.'}
+  else if(weeks<=2){cls='enough';msg=`Нормально: вместе с остатком хватит на ${weeks.toFixed(1)} нед.${money}`}
+  else if(weeks<=4){cls='over';msg=`Осторожно: хватит на ${weeks.toFixed(1)} нед. Лучше взять не больше ${max} шт.${money}`}
+  else{cls='order';msg=`Не берите всю партию: хватит на ${weeks.toFixed(1)} нед. — товар залежится и придётся снижать цену. Возьмите максимум ${max} шт.${money}`}
+  o.innerHTML=`<span class="tag ${cls}">${cls==='enough'?'Можно':cls==='over'?'Осторожно':'Не стоит'}</span> ${msg}<div class="hint" style="margin-top:6px">Проверьте также формат: покупатели могут предпочитать другую фасовку (маленькие упаковки vs большие).</div>`;
+}
+drawReqs();
+// ---------- universal CSV reader ----------
+let lastT=null;
+function readCSVFile(f){
+  const r=new FileReader();
+  r.onload=()=>{
+    const buf=r.result,b=new Uint8Array(buf);let text;
+    if(b[0]===0xFF&&b[1]===0xFE)text=new TextDecoder('utf-16le').decode(buf);
+    else if(b[0]===0xFE&&b[1]===0xFF)text=new TextDecoder('utf-16be').decode(buf);
+    else{try{text=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){try{text=new TextDecoder('windows-1251').decode(buf)}catch(e2){text=new TextDecoder().decode(buf)}}}
+    load(text);
+  };
+  r.readAsArrayBuffer(f);
+}
+function tokenize(text){
+  text=text.replace(/^\uFEFF/,'');
+  const first=text.split(/\r?\n/).find(l=>l.trim())||'';
+  const cnt=d=>first.split(d).length-1;
+  const delim=[',',';','\t','|'].sort((a,b)=>cnt(b)-cnt(a))[0];
+  const rows=[];let row=[],cur='',q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){if(c==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+    else if(c==='"')q=true;
+    else if(c===delim){row.push(cur);cur=''}
+    else if(c==='\n'||c==='\r'){if(c==='\r'&&text[i+1]==='\n')i++;row.push(cur);cur='';if(row.some(x=>x.trim()))rows.push(row);row=[]}
+    else cur+=c;
+  }
+  row.push(cur);if(row.some(x=>x.trim()))rows.push(row);
+  return rows.map(r=>r.map(x=>x.trim()));
+}
+function num(s){
+  if(s==null)return NaN;
+  s=String(s).replace(/\s/g,'').replace(/[^\d,.\-]/g,'');
+  if(!/\d/.test(s))return NaN;
+  const lc=s.lastIndexOf(','),ld=s.lastIndexOf('.');
+  if(lc>=0&&ld>=0){s=lc>ld?s.replace(/\./g,'').replace(',','.'):s.replace(/,/g,'')}
+  else if(lc>=0){s=/^-?\d{1,3}(,\d{3})+$/.test(s)?s.replace(/,/g,''):s.replace(',','.')}
+  return parseFloat(s);
+}
+function pdate(s){
+  s=String(s||'').trim();if(!s)return null;
+  let m,d=null;
+  if(m=s.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/))d=new Date(+m[1],+m[2]-1,+m[3]);
+  else if(m=s.match(/^(\d{1,2})[-./](\d{1,2})[-./](\d{2,4})/)){let y=+m[3],a=+m[1],b=+m[2];if(y<100)y+=2000;if(b>12&&a<=12){const t=a;a=b;b=t}d=new Date(y,b-1,a)}
+  else if(/^\d{5}$/.test(s))d=new Date(Math.round((+s-25569)*864e5));
+  else if(/[a-zA-Z]/.test(s)&&s.length>6)d=new Date(s);
+  return d&&!isNaN(d)&&d.getFullYear()>1990&&d.getFullYear()<2100?d:null;
+}
+function analyze(table){
+  const numLike=x=>x!==''&&/^[\d\s.,\-]+$/.test(x);
+  const r0=table[0];
+  const hasHeader=r0.filter(numLike).length<Math.ceil(r0.length/2);
+  const head=hasHeader?r0.map((h,i)=>h||('Колонка '+(i+1))):r0.map((_,i)=>'Колонка '+(i+1));
+  const body=hasHeader?table.slice(1):table;
+  const n=head.length,low=head.map(h=>h.toLowerCase()),used=new Set(),map={};
+  const find=(keys,ex)=>{const i=low.findIndex((h,j)=>!used.has(j)&&keys.some(k=>h.includes(k))&&!(ex||[]).some(e=>h.includes(e)));if(i>=0)used.add(i);return i};
+  map.d=find(['date','дата','день','day','период','time','күні']);
+  map.p=find(['product','товар','наимен','номенкл','item','name','назван','тауар','өнім']);
+  map.k=find(['stock','остат','balance','наличи','inventory','қалдық']);
+  map.c=find(['price','цена','себест','закуп','cost','стоим','баға']);
+  map.s=find(['sold','продан','продаж','qty','колич','кол-во','quantity','units','реализ','расход','сатыл'],['сумм','выруч','revenue','amount','total','итог']);
+  const sample=body.slice(0,60);
+  const col=i=>sample.map(r=>(r[i]||'').trim());
+  const frac=(i,fn)=>col(i).filter(fn).length/Math.max(1,sample.length);
+  const isD=x=>/[-./]/.test(x)&&/\d/.test(x)&&!!pdate(x);
+  const isN=x=>x!==''&&!isNaN(num(x));
+  const free=()=>[...Array(n).keys()].filter(i=>!used.has(i));
+  if(map.d<0){const i=free().find(i=>frac(i,isD)>0.8);if(i!==undefined){map.d=i;used.add(i)}}
+  if(map.p<0){const i=free().find(i=>frac(i,isN)<0.3&&frac(i,isD)<0.3);if(i!==undefined){map.p=i;used.add(i)}}
+  for(const key of ['s','k','c']){if(map[key]<0){const i=free().find(i=>frac(i,isN)>0.8&&frac(i,isD)<0.5);if(i!==undefined){map[key]=i;used.add(i)}}}
+  return {head,body,map};
+}
+function buildRows(body,map){
+  const today=new Date();today.setHours(0,0,0,0);
+  const out=[];let skipped=0;
+  for(const r of body){
+    const name=(r[map.p]||'').trim();
+    const sold=map.s>=0?num(r[map.s]):NaN;
+    if(!name||isNaN(sold)||/^(итого|всего|total)/i.test(name)){skipped++;continue}
+    const dt=map.d>=0?pdate(r[map.d]):today;
+    if(!dt){skipped++;continue}
+    const st=map.k>=0?num(r[map.k]):0,pr=map.c>=0?num(r[map.c]):0;
+    out.push({date:dt,product:name,sold:sold,stock:isNaN(st)?0:st,price:isNaN(pr)?0:pr});
+  }
+  return {out,skipped};
+}
+function load(text){
+  $('err').textContent='';$('mapBox').innerHTML='';
+  try{
+    const table=tokenize(text);
+    if(table.length<2)throw new Error('Файл пустой или в нём всего одна строка.');
+    lastT=analyze(table);
+    applyMap(lastT.map);
+  }catch(e){$('err').textContent=e.message}
+}
+function applyMap(map){
+  const t=lastT,res=buildRows(t.body,map);
+  if(map.p<0||map.s<0||!res.out.length){showMap(map,'Не удалось точно определить колонки. Укажите их вручную:');return}
+  rows=res.out;lastT.map=map;
+  const w=[];
+  if(map.d<0)w.push('даты не найдены — считаю, что продажи в файле за последние 4 недели');
+  if(map.k<0)w.push('колонка остатков не найдена — остаток считается 0');
+  if(res.skipped)w.push('пропущено строк: '+res.skipped);
+  const nm=i=>i>=0?esc(t.head[i]):'—';
+  $('err').textContent=w.length?'⚠️ '+w.join('; ')+'.':'';
+  $('mapBox').innerHTML=`<p class='hint' style='margin:8px 0 0'>✅ Прочитано строк: ${res.out.length}. Колонки: дата = <b>${nm(map.d)}</b>, товар = <b>${nm(map.p)}</b>, продано = <b>${nm(map.s)}</b>, остаток = <b>${nm(map.k)}</b>, цена = <b>${nm(map.c)}</b>. <a href='#' onclick='showMap(lastT.map);return false' style='color:var(--accent)'>Изменить колонки</a></p>`;
+  render();$('out').scrollIntoView({behavior:'smooth'});
+}
+function showMap(map,msg){
+  const t=lastT;
+  const opt=(sel,none)=>(none?`<option value='-1'${sel<0?' selected':''}>${none}</option>`:'')+t.head.map((h,i)=>`<option value='${i}'${sel===i?' selected':''}>${esc(h)}</option>`).join('');
+  const f=(id,label,sel,none)=>`<label style='display:flex;flex-direction:column;gap:4px;font-size:13px'>${label}<select id='m_${id}'>${opt(sel,none)}</select></label>`;
+  const prev=t.body.slice(0,3).map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('');
+  $('mapBox').innerHTML=`<div style='margin-top:12px'><b>${msg||'Настройка колонок'}</b><div class='row' style='margin:10px 0;align-items:flex-end'>${f('p','Товар',map.p)}${f('s','Продано (шт.)',map.s)}${f('d','Дата',map.d,'— нет даты —')}${f('k','Остаток',map.k,'— нет —')}${f('c','Цена',map.c,'— нет —')}<button class='primary' onclick='applyUser()'>Применить</button></div><div class='scroll'><table style='min-width:0'><thead><tr>${t.head.map(h=>'<th>'+esc(h)+'</th>').join('')}</tr></thead><tbody>${prev}</tbody></table></div></div>`;
+}
+function applyUser(){
+  const g=id=>parseInt($('m_'+id).value);
+  const map={p:g('p'),s:g('s'),d:g('d'),k:g('k'),c:g('c')};
+  $('err').textContent='';$('mapBox').innerHTML='';
+  applyMap(map);
+}
+// ---------- photo & messy text input ----------
+let photos=[],pending=[];
+const esc2=s=>esc(s).replace(/'/g,'&#39;');
+const normName=s=>String(s).toLowerCase().replace(/[^a-zа-яёәіңғүұқөһ0-9]/gi,'');
+$('photoBtn').onclick=()=>$('photoFile').click();
+$('photoFile').onchange=e=>{photos=[...e.target.files];$('photoName').textContent=photos.length?('Фото: '+photos.length):'';e.target.value=''};
+$('parseBtn').onclick=()=>parseInput();
+async function shrink(f){
+  try{const bmp=await createImageBitmap(f);const k=Math.min(1,1600/Math.max(bmp.width,bmp.height));const c=document.createElement('canvas');c.width=Math.round(bmp.width*k);c.height=Math.round(bmp.height*k);c.getContext('2d').drawImage(bmp,0,0,c.width,c.height);return await new Promise(r=>c.toBlob(b=>r(b||f),'image/jpeg',0.85))}catch(e){return f}
+}
+function parseJSONArray(t){
+  const m=String(t).replace(/```json|```/g,'').match(/\[[\s\S]*\]/);if(!m)return null;
+  try{return JSON.parse(m[0]).filter(x=>x&&x.product).map(x=>({product:String(x.product),qty:Number(x.qty)||0,price:Number(x.price)||0}))}catch(e){return null}
+}
+function localParse(t){
+  const out=[];
+  for(const part of t.split(/\n|;|,\s/)){
+    const s=part.trim();if(!s)continue;
+    let m=s.match(/^(.*?)[\s:=\-–—xх×]*?(\d+(?:[.,]\d+)?)\s*(?:шт|штук|кг|л|уп|пач)?\.?(?:\s+по\s+(\d+(?:[.,]\d+)?))?\s*$/i);
+    if(m&&m[1].trim().length>1)out.push({product:m[1].trim().replace(/[\s\-–—:=]+$/,''),qty:num(m[2]),price:m[3]?num(m[3]):0});
+    else if(m=s.match(/^(\d+(?:[.,]\d+)?)\s*(?:шт|кг|л|уп)?\.?\s+(.+)$/i))out.push({product:m[2].trim(),qty:num(m[1]),price:0});
+  }
+  return out;
+}
+async function parseInput(){
+  const o=$('inOut'),text=$('inText').value.trim();
+  if(!photos.length&&!text){o.innerHTML="<span class='hint'>Вставьте текст или выберите фото.</span>";return}
+  o.innerHTML="<span class='hint'>ИИ читает данные…</span>";
+  let items=null,msg='';
+  const sample=window.claude?await claude.use('sample'):null;
+  if(sample){
+    try{
+      const lim=sample.limits?await sample.limits():{};
+      if(photos.length&&!lim.images)msg='Чтение фото сейчас недоступно.';
+      else{
+        const blobs=[];for(const f of photos.slice(0,4))blobs.push(await shrink(f));
+        const names=[...new Set(rows.map(r=>r.product))].slice(0,150).join('; ')||'нет';
+        const prompt=`Ты помогаешь владельцу магазина в Казахстане. Из фото тетради/накладной/чека и/или текста ниже извлеки товары и числа. Текст на русском или казахском, может быть с ошибками и сокращениями. Верни ТОЛЬКО JSON-массив без пояснений: [{"product":"название","qty":число,"price":число или null}]. qty — количество (число как есть). price — цена за единицу, если указана, иначе null. Исправляй опечатки. Если товар совпадает с одним из уже существующих, используй точно такое же название. Существующие товары: ${names}. Итоги и общие суммы не включай.${text?'\n\nТекст:\n'+text:''}`;
+        const r=await sample(prompt,{cache:false,...(blobs.length?{images:blobs}:{})});
+        items=parseJSONArray(r.text);
+        if(!items)msg='ИИ не смог разобрать данные. Попробуйте фото почётче.';
+      }
+    }catch(e){msg=e&&e.code==='not_granted'?'Доступ к ИИ не разрешён.':'Не получилось прочитать. Попробуйте ещё раз.'}
+  }else if(photos.length)msg='Фото читает ИИ — откройте страницу в Claude.';
+  if(!items&&text&&!photos.length)items=localParse(text);
+  if(!items||!items.length){o.innerHTML=`<span class='hint'>${msg||'Не нашёл товаров. Формат: «молоко 5», по строке на товар.'}</span>`;return}
+  pending=items;drawPending();
+}
+function drawPending(){
+  const inp='font:inherit;width:100%;min-width:70px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--text);padding:6px';
+  const rowsH=pending.map((p,i)=>`<tr><td><input style='${inp}' value='${esc2(p.product)}' oninput='pending[${i}].product=this.value'></td><td class='n'><input style='${inp}' type='number' step='any' value='${p.qty}' oninput='pending[${i}].qty=parseFloat(this.value)||0'></td><td class='n'><input style='${inp}' type='number' step='any' value='${p.price||''}' oninput='pending[${i}].price=parseFloat(this.value)||0'></td><td><button onclick='pending.splice(${i},1);drawPending()'>✕</button></td></tr>`).join('');
+  $('inOut').innerHTML=`<p class='hint' style='margin:12px 0 4px'>Распознано позиций: ${pending.length}. Проверьте и исправьте при необходимости:</p><div class='scroll'><table style='min-width:0'><thead><tr><th>Товар</th><th class='n'>Кол-во</th><th class='n'>Цена</th><th></th></tr></thead><tbody>${rowsH}</tbody></table></div><button class='primary' style='margin-top:10px' onclick='applyPending()'>Добавить в данные</button>`;
+}
+function applyPending(){
+  const mode=$('inMode').value,weeks=parseInt($('inWeeks').value)||1;
+  let lastT0=0;for(const r of rows)if(r.date.getTime()>lastT0)lastT0=r.date.getTime();
+  const last=lastT0?new Date(lastT0):(()=>{const d=new Date();d.setHours(0,0,0,0);return d})();
+  const info={};for(const r of rows){const k=normName(r.product);if(!info[k]||r.date>=info[k].date)info[k]=r}
+  let added=0;
+  for(const p of pending){
+    if(!p.product.trim()||!(p.qty>0||(mode==='stock'&&p.qty===0)))continue;
+    const ex=info[normName(p.product)],name=ex?ex.product:p.product.trim(),price=p.price||(ex?ex.price:0),stock=ex?ex.stock:0;
+    if(mode==='stock')rows.push({date:last,product:name,sold:0,stock:p.qty,price});
+    else for(let i=0;i<weeks;i++)rows.push({date:new Date(last.getTime()-i*7*864e5),product:name,sold:p.qty/weeks,stock,price});
+    added++;
+  }
+  if(!added){$('inOut').innerHTML="<span class='hint'>Нечего добавлять.</span>";return}
+  pending=[];photos=[];$('photoName').textContent='';
+  $('inOut').innerHTML=`<p class='hint' style='margin-top:12px'>✅ Добавлено позиций: ${added}. План пересчитан ниже.</p>`;
+  render();$('out').scrollIntoView({behavior:'smooth'});
+}
+// ---------- any file format ----------
+const LIBS={xlsx:'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',pdf:'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',mammoth:'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js'};
+const libP={};
+function loadLib(k){return libP[k]||(libP[k]=new Promise((res,rej)=>{const s=document.createElement('script');s.src=LIBS[k];s.onload=res;s.onerror=()=>{delete libP[k];rej(new Error('не загрузилась библиотека для этого формата'))};document.head.appendChild(s)}))}
+function decodeBuf(buf){
+  const b=new Uint8Array(buf);
+  if(b[0]===0xFF&&b[1]===0xFE)return new TextDecoder('utf-16le').decode(buf);
+  if(b[0]===0xFE&&b[1]===0xFF)return new TextDecoder('utf-16be').decode(buf);
+  try{return new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){try{return new TextDecoder('windows-1251').decode(buf)}catch(e2){return new TextDecoder().decode(buf)}}
+}
+function tryTable(text){
+  try{
+    const table=tokenize(text);
+    if(table.length<2||table[0].length<2)return false;
+    const t=analyze(table),res=buildRows(t.body,t.map);
+    if(t.map.p<0||t.map.s<0||res.out.length<2)return false;
+    lastT=t;$('err').textContent='';$('mapBox').innerHTML='';applyMap(t.map);return true;
+  }catch(e){return false}
+}
+function toMessy(text){
+  $('inText').value=String(text).slice(0,15000);
+  $('aiin').scrollIntoView({behavior:'smooth'});
+  return parseInput();
+}
+async function readFile(f){
+  const ext=(f.name.split('.').pop()||'').toLowerCase();
+  $('err').textContent='';$('mapBox').innerHTML='';
+  try{
+    if(ext==='csv'||ext==='tsv')return readCSVFile(f);
+    if((f.type||'').startsWith('image/')||['png','jpg','jpeg','webp','gif','bmp'].includes(ext)){
+      photos=[f];$('photoName').textContent='Фото: 1';return toMessy('');
+    }
+    if(['xlsx','xls','xlsm','ods'].includes(ext)){
+      await loadLib('xlsx');
+      const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:true});
+      let best='',bl=0;
+      for(const n of wb.SheetNames){const c=XLSX.utils.sheet_to_csv(wb.Sheets[n],{dateNF:'yyyy-mm-dd'});const l=c.split('\n').length;if(l>bl){bl=l;best=c}}
+      return load(best);
+    }
+    if(ext==='pdf'){
+      await loadLib('pdf');
+      pdfjsLib.GlobalWorkerOptions.workerSrc=LIBS.pdf.replace('pdf.min.js','pdf.worker.min.js');
+      const doc=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;
+      const n=Math.min(doc.numPages,15);let text='';
+      for(let p=1;p<=n;p++){
+        const tc=await (await doc.getPage(p)).getTextContent();
+        const lines={};
+        for(const it of tc.items){const y=Math.round(it.transform[5]/4);(lines[y]=lines[y]||[]).push(it)}
+        Object.keys(lines).map(Number).sort((a,b)=>b-a).forEach(y=>{text+=lines[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(i=>i.str).join('  ')+'\n'});
+        text+='\n';
+      }
+      if(text.replace(/\s/g,'').length<30*n){
+        photos=[];
+        for(let p=1;p<=Math.min(n,4);p++){
+          const pg=await doc.getPage(p),vp=pg.getViewport({scale:1.6}),c=document.createElement('canvas');
+          c.width=vp.width;c.height=vp.height;
+          await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;
+          photos.push(await new Promise(r=>c.toBlob(r,'image/jpeg',0.85)));
+        }
+        $('photoName').textContent='PDF (скан): '+photos.length+' стр.';
+        return toMessy('');
+      }
+      photos=[];$('photoName').textContent='';
+      if(tryTable(text))return;
+      return toMessy(text);
+    }
+    if(ext==='docx'){
+      await loadLib('mammoth');
+      const r=await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()});
+      photos=[];$('photoName').textContent='';
+      if(tryTable(r.value))return;
+      return toMessy(r.value);
+    }
+    if(['doc','ppt','pptx','pages','numbers'].includes(ext))throw new Error('формат .'+ext+' не поддерживается — сохраните как PDF, .docx или Excel');
+    const text=decodeBuf(await f.arrayBuffer());
+    photos=[];$('photoName').textContent='';
+    if(ext==='json'){
+      try{
+        const data=JSON.parse(text);
+        const arr=Array.isArray(data)?data:(Object.values(data).find(Array.isArray)||[]);
+        if(arr.length&&typeof arr[0]==='object'){
+          const keys=[...new Set(arr.flatMap(o=>Object.keys(o)))],q=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+          return load([keys.map(q).join(','),...arr.map(o=>keys.map(k=>q(o[k])).join(','))].join('\n'));
+        }
+      }catch(e){}
+    }
+    if(tryTable(text))return;
+    return toMessy(text);
+  }catch(e){
+    $('err').textContent='Не удалось прочитать файл: '+(e.message||'ошибка')+'. Попробуйте сохранить как CSV.';
+  }
+}
+// ---------- events ----------
+$('demoBtn').onclick=()=>load(sampleCSV());
+$('fileBtn').onclick=()=>$('file').click();
+$('file').onchange=e=>{const f=e.target.files[0];if(f)readFile(f);e.target.value=''};
+document.addEventListener('dragover',e=>e.preventDefault());
+document.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)readFile(f)});
+$('season').onchange=()=>{if(rows.length)render()};
+$('dlBtn').onclick=()=>{
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent("\uFEFF"+sampleCSV());
+  a.download='smartstock-sample.csv';a.click();
+};
+$('copyBtn').onclick=async()=>{
+  const items=plan.filter(p=>p.order>0);
+  const txt="Заказ на следующую неделю:\n"+items.map(p=>`• ${p.name} — ${p.order} шт.`).join("\n");
+  try{await navigator.clipboard.writeText(txt);$('copyBtn').textContent="Скопировано ✓"}
+  catch(e){window.prompt("Скопируйте заказ:",txt)}
+  setTimeout(()=>$('copyBtn').textContent="Скопировать заказ",1800);
+};
+</script>
+</body>
+</html>
